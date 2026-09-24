@@ -1,0 +1,8 @@
+{
+  "name": "worktown-games",
+  "private": true,
+  "type": "module",
+  "scripts": { "dev": "vite", "build": "vite build", "preview": "vite preview" },
+  "dependencies": { "react": "^19.2.8", "react-dom": "^19.2.8", "zustand": "^5.0.15", "framer-motion": "^13.2.0" },
+  "devDependencies": { "@vitejs/plugin-react": "^5.1.0", "vite": "^7.2.0" }
+}
