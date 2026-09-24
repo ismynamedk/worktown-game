@@ -225,8 +225,8 @@ export default function App() {
       <div className="layout">
         <section className="board">
           <picture>
-            <source srcSet="/art/board.webp" type="image/webp" />
-            <img src="/art/board.jpg" alt="Work Town seen from above" className="board-img" />
+            <source srcSet={import.meta.env.BASE_URL + "art/board.webp"} type="image/webp" />
+            <img src={import.meta.env.BASE_URL + "art/board.jpg"} alt="Work Town seen from above" className="board-img" />
           </picture>
           {ZONES.map(z => (
             <Zone key={z.id} zone={z} game={game} onPick={choose} disabled={!placing} />
