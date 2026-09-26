@@ -147,7 +147,11 @@ function Home({ onPlay, onGame }) {
         <div className="downloads">
           <a className="dl big" href={`${base}downloads/work-town-print-kit.zip`} download>
             <b>Download the print kit</b>
-            <span>The board, 4 characters, 64 cards, card backs, money, pawns and the player sheet, plus ready-to-print sheets of 9 cards per A4 page. 20 MB.</span>
+            <span>The board, a labelled board, 4 characters, 64 cards, card backs, money, pawns and the player sheet, plus ready-to-print sheets of 9 cards per A4 page. 26 MB.</span>
+          </a>
+          <a className="dl" href={`${base}downloads/work-town-rulebook.pdf`} download>
+            <b>The Rulebook</b>
+            <span>All eight games, new edition, 9 pages.</span>
           </a>
         </div>
       </section>

@@ -408,3 +408,8 @@ table.mini tr.won td{ background:#D6F5DD; }
 .pitches .btn{ justify-content:flex-start; text-align:left; border-radius:16px; font-size:15px; min-height:52px; }
 .choices{ background:var(--card); border-radius:20px; padding:16px 18px; box-shadow:var(--shadow); }
 .choices h3{ font-size:20px; margin-bottom:10px; }
+
+@media (max-width:560px){
+  table.mini{ font-size:12px; } table.mini td, table.mini th{ padding:4px 3px; }
+  .bidbox{ padding:12px; } .ok,.no,.meh{ padding:2px 6px; font-size:11px; }
+}

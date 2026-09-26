@@ -102,7 +102,7 @@ export const PRODUCTIVITY = [
 // The eleven zones. `art` is the Manus file that drops in later; until it
 // exists the zone renders as a clean lettered plate, never a broken image.
 export const ZONES = [
-  { id: 'skill',  name: 'Skill Centre',      cap: 2, art: 'zone-training.png',  d: 'Buy up to two skill points at 100 each.' , x: 20, y: 21 },
+  { id: 'skill',  name: 'Skill Centre',      cap: 2, art: 'zone-training.png',  d: 'Buy one skill point for 100.' , x: 20, y: 21 },
   { id: 'grad',   name: 'Graduation',        cap: 1, art: 'zone-college.png',   d: 'Buy your next education level.' , x: 48, y: 22 },
   { id: 'search', name: 'Job Search',        cap: 2, art: 'zone-jobcentre.png', d: 'Draw one vacancy. Take it if you qualify.' , x: 73, y: 20 },
   { id: 'match',  name: 'Job Match',         cap: 1, art: 'zone-joboffice.png', d: 'Draw two vacancies. Take the better one you qualify for.' , x: 87, y: 27 },
