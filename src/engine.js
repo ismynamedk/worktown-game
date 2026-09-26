@@ -154,7 +154,7 @@ export function resolve(g) {
         lost.forEach(trainOnRejection)
         g.events.push({
           zone: zone.name,
-          text: `${job.title}: ${win.name} won it against ${lost.length} other${lost.length === 1 ? '' : 's'}.`,
+          text: lost.length ? `${job.title}: ${win.name} beat ${lost.length} other${lost.length === 1 ? '' : 's'} to the job.` : `${job.title}: ${win.name} was the only one who qualified and got it.`,
           detail: lost.map(p => {
             const why = missingReason(p, job, g.flags)
             return `${p.name}: ${why.length ? why.join('; ') : 'qualified, but not the strongest'}. Trained instead.`

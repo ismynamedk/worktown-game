@@ -102,17 +102,17 @@ export const PRODUCTIVITY = [
 // The eleven zones. `art` is the Manus file that drops in later; until it
 // exists the zone renders as a clean lettered plate, never a broken image.
 export const ZONES = [
-  { id: 'skill',  name: 'Skill Centre',      cap: 2, art: 'zone-training.png',  d: 'Buy up to two skill points at 100 each.' , x: 21.5, y: 13 },
-  { id: 'grad',   name: 'Graduation',        cap: 1, art: 'zone-college.png',   d: 'Buy your next education level.' , x: 43.5, y: 11 },
-  { id: 'search', name: 'Job Search',        cap: 2, art: 'zone-jobcentre.png', d: 'Draw one vacancy. Take it if you qualify.' , x: 62.5, y: 13 },
-  { id: 'match',  name: 'Job Match',         cap: 1, art: 'zone-joboffice.png', d: 'Draw two vacancies. Take the better one you qualify for.' , x: 80.5, y: 19 },
-  { id: 'compete',name: 'Competition',       cap: 9, art: 'zone-arena.png',     d: 'One vacancy. Everyone here competes. Strongest qualifying wins.' , x: 80.0, y: 41 },
-  { id: 'employ', name: 'Employer Zone',     cap: 1, art: 'zone-company.png',   d: 'You are HR. Hire another player and take 100.' , x: 68.5, y: 78 },
-  { id: 'exp',    name: 'Experience Bonus',  cap: 2, art: 'zone-park.png',      d: 'Take one year of experience.' , x: 46.5, y: 80 },
-  { id: 'prod',   name: 'Productivity',      cap: 2, art: 'zone-workshop.png',  d: 'Draw a Productivity card.' , x: 24.0, y: 78 },
-  { id: 'risk',   name: 'Risk Zone',         cap: 1, art: 'zone-corner.png',    d: 'Draw an Oops card, then take 200.' , x: 10.0, y: 69 },
-  { id: 'career', name: 'Career Desk',       cap: 1, art: 'zone-tower.png',     d: 'Check your upgrade early and take 50.' , x: 10.5, y: 40 },
-  { id: 'rest',   name: 'Rest',              cap: 9, art: 'zone-cafe.png',      d: 'Take 100 and do nothing.' , x: 11.5, y: 23 },
+  { id: 'skill',  name: 'Skill Centre',      cap: 2, art: 'zone-training.png',  d: 'Buy up to two skill points at 100 each.' , x: 20, y: 21 },
+  { id: 'grad',   name: 'Graduation',        cap: 1, art: 'zone-college.png',   d: 'Buy your next education level.' , x: 48, y: 22 },
+  { id: 'search', name: 'Job Search',        cap: 2, art: 'zone-jobcentre.png', d: 'Draw one vacancy. Take it if you qualify.' , x: 73, y: 20 },
+  { id: 'match',  name: 'Job Match',         cap: 1, art: 'zone-joboffice.png', d: 'Draw two vacancies. Take the better one you qualify for.' , x: 87, y: 27 },
+  { id: 'compete',name: 'Competition',       cap: 9, art: 'zone-arena.png',     d: 'One vacancy. Everyone here competes. Strongest qualifying wins.' , x: 86, y: 50 },
+  { id: 'employ', name: 'Employer Zone',     cap: 1, art: 'zone-company.png',   d: 'You are HR. Hire another player and take 100.' , x: 86, y: 80 },
+  { id: 'exp',    name: 'Experience Bonus',  cap: 2, art: 'zone-park.png',      d: 'Take one year of experience.' , x: 67, y: 71 },
+  { id: 'prod',   name: 'Productivity',      cap: 2, art: 'zone-workshop.png',  d: 'Draw a Productivity card.' , x: 39, y: 82 },
+  { id: 'risk',   name: 'Risk Zone',         cap: 1, art: 'zone-corner.png',    d: 'Draw an Oops card, then take 200.' , x: 17, y: 81 },
+  { id: 'career', name: 'Career Desk',       cap: 1, art: 'zone-tower.png',     d: 'Check your upgrade early and take 50.' , x: 13, y: 65 },
+  { id: 'rest',   name: 'Rest',              cap: 9, art: 'zone-cafe.png',      d: 'Take 100 and do nothing.' , x: 15, y: 40 },
 ]
 
 export const ROUNDS = 6
