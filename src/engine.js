@@ -117,6 +117,8 @@ export function trainOnRejection(p) {
   return null
 }
 
+const was = p => (p.human ? 'You were' : p.name + ' was')
+
 function give(g, p, msg) { g.log.push({ round: g.round, who: p.name, msg }) }
 
 function takeJob(g, p, job, how) {
@@ -187,8 +189,8 @@ export function resolve(g) {
         if (others.length) {
           const pick = strongest(others, job)
           takeJob(g, pick, job, `hired by ${p.name}`)
-          g.events.push({ zone: zone.name, text: `${p.name} was HR and hired ${pick.name} as ${job.title}.` })
-        } else { g.discard.push(job); g.events.push({ zone: zone.name, text: `${p.name} was HR for ${job.title} and nobody qualified.` }) }
+          g.events.push({ zone: zone.name, text: `${was(p)} HR and hired ${pick.name} as ${job.title}.` })
+        } else { g.discard.push(job); g.events.push({ zone: zone.name, text: `${was(p)} HR for ${job.title} and nobody qualified.` }) }
       }
       if (zid === 'exp') { p.exp++; give(g, p, 'took a year of experience') }
       if (zid === 'prod') {
