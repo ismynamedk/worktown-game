@@ -108,6 +108,15 @@ export function botChoice(g, p) {
   return open.length ? open[0].id : null
 }
 
+/** REJECTION IS WHERE PEOPLE TRAIN. A turned-down player takes one free skill
+ *  point in the track the market wants most. Same idea her Blind Application
+ *  already uses, and it is what keeps an unlucky round-1 from ending the game. */
+export function trainOnRejection(p) {
+  const s = SKILLS.slice().sort((a, b) => p.skills[a] - p.skills[b])[0]
+  if (p.skills[s] < 5) { p.skills[s] += 1; return s }
+  return null
+}
+
 function give(g, p, msg) { g.log.push({ round: g.round, who: p.name, msg }) }
 
 function takeJob(g, p, job, how) {
@@ -133,19 +142,20 @@ export function resolve(g) {
         g.events.push({ zone: zone.name, text: `${job.title}: too many applicants, nobody was hired.` })
         g.discard.push(job)
       } else if (!cands.length) {
-        ids.forEach(i => { P[i].cash += 50 })
+        ids.forEach(i => { P[i].cash += 50; trainOnRejection(P[i]) })
         g.events.push({ zone: zone.name, text: `${job.title}: nobody qualified. Everyone took 50 for trying.` })
         g.discard.push(job)
       } else {
         const win = strongest(cands, job)
         takeJob(g, win, job, 'competition')
         const lost = ids.map(i => P[i]).filter(p => p !== win)
+        lost.forEach(trainOnRejection)
         g.events.push({
           zone: zone.name,
           text: `${job.title}: ${win.name} won it against ${lost.length} other${lost.length === 1 ? '' : 's'}.`,
           detail: lost.map(p => {
             const why = missingReason(p, job, g.flags)
-            return `${p.name}: ${why.length ? why.join('; ') : 'qualified, but not the strongest'}`
+            return `${p.name}: ${why.length ? why.join('; ') : 'qualified, but not the strongest'}. Trained instead.`
           }),
         })
       }
@@ -165,8 +175,9 @@ export function resolve(g) {
         const ok = seen.filter(j => qualifies(p, j, g.flags)).sort((a, b) => b.pay - a.pay)
         if (ok.length) { takeJob(g, p, ok[0], zone.name); seen.filter(j => j !== ok[0]).forEach(j => g.discard.push(j)) }
         else {
+          trainOnRejection(p)
           seen.forEach(j => g.discard.push(j))
-          if (p.human) g.events.push({ zone: zone.name, text: `${seen[0].title}: you did not qualify.`, detail: [missingReason(p, seen[0], g.flags).join('; ')] })
+          if (p.human) g.events.push({ zone: zone.name, text: `${seen[0].title}: you did not qualify. You trained instead, so the round was not wasted.`, detail: [missingReason(p, seen[0], g.flags).join('; ')] })
         }
       }
       if (zid === 'employ') {
