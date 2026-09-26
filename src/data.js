@@ -111,7 +111,7 @@ export const ZONES = [
   { id: 'exp',    name: 'Experience Bonus',  cap: 2, art: 'zone-park.png',      d: 'Take one year of experience.' , x: 67, y: 71 },
   { id: 'prod',   name: 'Productivity',      cap: 2, art: 'zone-workshop.png',  d: 'Draw a Productivity card.' , x: 39, y: 82 },
   { id: 'risk',   name: 'Risk Zone',         cap: 1, art: 'zone-corner.png',    d: 'Draw an Oops card, then take 200.' , x: 17, y: 81 },
-  { id: 'career', name: 'Career Desk',       cap: 1, art: 'zone-tower.png',     d: 'Check your upgrade early and take 50.' , x: 13, y: 65 },
+  { id: 'career', name: 'Mentor',             cap: 1, art: 'zone-tower.png',     d: 'Pay a mentor 200 for one extra year of experience.' , x: 13, y: 65 },
   { id: 'rest',   name: 'Rest',              cap: 9, art: 'zone-cafe.png',      d: 'Take 100 and do nothing.' , x: 15, y: 40 },
 ]
 

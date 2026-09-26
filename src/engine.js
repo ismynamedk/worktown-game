@@ -61,6 +61,24 @@ export function missingReason(p, job, flags = {}) {
   return out
 }
 
+/** Which of the four rules actually decided it, in words a student can check. */
+export function decider(cands, win, job) {
+  const others = cands.filter(p => p !== win)
+  if (!others.length) return `${win.name} was the only candidate who met every requirement.`
+  const keys = [
+    ['skills', p => p.skills[job.sk], `higher ${job.sk} skill`],
+    ['exp', p => p.exp, 'more years of experience'],
+    ['edu', p => p.edu, 'more education'],
+    ['cash', p => -p.cash, 'less money, so needed the job more'],
+  ]
+  for (const [, f, words] of keys) {
+    const best = Math.max(...others.map(f))
+    if (f(win) > best) return `Won on ${words}.`
+    if (f(win) < best) break
+  }
+  return 'Every rule was a tie, so it came down to the order they applied.'
+}
+
 /** Competition order: relevant skill, then experience, then education, then least cash. */
 export function strongest(cands, job) {
   return cands.slice().sort((a, b) =>
@@ -96,6 +114,9 @@ export function botChoice(g, p) {
   const nextUp = UPGRADES.find(u => p.career < u.to)
   if (nextUp && p.cash >= SKILL_COST && totalSkill(p) < nextUp.skills &&
       p.exp >= nextUp.years - 1 && has('skill')) return 'skill'
+
+  // a mentor is worth it when you can afford it and years are what you lack
+  if (nextUp && p.cash >= 400 && p.exp < nextUp.years && totalSkill(p) >= nextUp.skills - 1 && has('career')) return 'career'
 
   if (!p.job && canQualifySomething && has('search')) return 'search'
   if (!p.job && canQualifySomething && has('match')) return 'match'
@@ -149,12 +170,18 @@ export function resolve(g) {
         g.discard.push(job)
       } else {
         const win = strongest(cands, job)
+        const table = ids.map(i => P[i]).map(p => ({
+          name: p.name, human: !!p.human, qualified: qualifies(p, job, g.flags),
+          skill: p.skills[job.sk], exp: p.exp, edu: p.edu, cash: p.cash, won: p === win,
+        }))
+        const reason = decider(cands, win, job)
         takeJob(g, win, job, 'competition')
         const lost = ids.map(i => P[i]).filter(p => p !== win)
         lost.forEach(trainOnRejection)
         g.events.push({
           zone: zone.name,
           text: lost.length ? `${job.title}: ${win.name} beat ${lost.length} other${lost.length === 1 ? '' : 's'} to the job.` : `${job.title}: ${win.name} was the only one who qualified and got it.`,
+          compete: { job: job.title, skill: job.sk, table, reason },
           detail: lost.map(p => {
             const why = missingReason(p, job, g.flags)
             return `${p.name}: ${why.length ? why.join('; ') : 'qualified, but not the strongest'}. Trained instead.`
@@ -213,7 +240,14 @@ export function resolve(g) {
         g.events.push({ zone: zone.name, text: `${p.name} gambled: ${c.t}. ${c.d} Took 200 anyway.` })
         g.oopsDeck.push(c)
       }
-      if (zid === 'career') p.cash += 50
+      if (zid === 'career') {
+        if (p.cash >= 200) {
+          p.cash -= 200; p.exp += 1
+          g.events.push({ zone: zone.name, text: `${p.name} paid a mentor 200 for one more year of experience.` })
+        } else {
+          g.events.push({ zone: zone.name, text: `${p.name} could not afford a mentor (250).` })
+        }
+      }
       if (zid === 'rest') p.cash += 100
     }
   }
@@ -234,6 +268,9 @@ export function resolve(g) {
   const card = draw(g, 'marketDeck')
   g.marketDeck.push(card)
   g.flags = {}
+  const beforeMarket = { ...g.market }
+  const payBefore = P.map(p => salaryOf(p, g.market))
+  const jobBefore = P.map(p => p.job ? p.job.title : null)
   card.f(g.market)
   for (const k in g.market) g.market[k] = Math.max(-2, Math.min(2, g.market[k]))
   if (card.fires) for (const p of P) if (card.fires(p)) { g.discard.push(p.job); p.job = null }
@@ -241,6 +278,15 @@ export function resolve(g) {
   if (card.flag) g.flags[card.flag] = true
   if (card.flag === 'grant') for (const p of P) { const s = SKILLS[rnd(4)]; p.skills[s] = Math.min(5, p.skills[s] + 1) }
   g.marketCard = card
+  const moves = Object.keys(g.market).filter(k => g.market[k] !== beforeMarket[k])
+    .map(k => ({ sector: k, from: beforeMarket[k], to: g.market[k] }))
+  const impacts = []
+  P.forEach((p, i) => {
+    if (jobBefore[i] && !p.job) impacts.push({ who: p.name, human: !!p.human, text: `lost the job as ${jobBefore[i]}` })
+    const now = salaryOf(p, g.market)
+    if (p.job && now !== payBefore[i]) impacts.push({ who: p.name, human: !!p.human, text: `pay ${now > payBefore[i] ? 'rises' : 'falls'} from ${payBefore[i]} to ${now}` })
+  })
+  g.marketImpact = { moves, impacts }
 
   g.placements = {}
   for (const p of P) { p.discs = p.skip ? DISCS - 1 : DISCS; p.skip = false }

@@ -5,6 +5,45 @@ import {
   newGame, resolve, place, freeSlots, botChoice, salaryOf, totalSkill, ranking, cloneGame,
 } from '../engine.js'
 import Board3D, { PLAYER_COLOURS } from '../scene/Board3D.jsx'
+import BlindApplication from '../games/BlindApplication.jsx'
+import Overtime from '../games/Overtime.jsx'
+import SkillDraft from '../games/SkillDraft.jsx'
+import JobMarket from '../games/JobMarket.jsx'
+import WhatAmIWorth from '../games/WhatAmIWorth.jsx'
+import CareerBuilder from '../games/CareerBuilder.jsx'
+import Employer from '../games/Employer.jsx'
+
+export const GAMES = [
+  { id: 'gethired', name: 'Get Hired', q: 'Can I get the job?', time: '40 min', grades: 'Grades 9 to 12', how: 'Send three workers around a 3D town every year', star: true },
+  { id: 'blind', name: 'Blind Application', q: 'Where should I apply?', time: '15 min', grades: 'Grades 9 to 12', how: 'Pick one job in secret, then reveal', comp: BlindApplication },
+  { id: 'worth', name: 'What Am I Worth?', q: 'Why does that job pay more?', time: '40 min', grades: 'Grades 11 to 12', how: 'Bid your own salary, or be the boss', comp: WhatAmIWorth },
+  { id: 'market', name: 'The Job Market', q: 'What if work changes?', time: '40 min', grades: 'Grades 10 to 12', how: 'Industries rise and fall around you', comp: JobMarket },
+  { id: 'builder', name: 'Career Builder', q: 'How do I grow?', time: '40 min', grades: 'Grades 9 to 12', how: 'Build, then work, for ten years', comp: CareerBuilder },
+  { id: 'employer', name: 'The Employer', q: 'Who should I hire?', time: '40 min', grades: 'Grades 9 to 12', how: 'Guess what the job really needs', comp: Employer },
+  { id: 'draft', name: 'Skill Draft', q: 'What should I learn first?', time: '15 min', grades: 'Grades 9 to 12', how: 'Take a card, pass the rest', comp: SkillDraft },
+  { id: 'overtime', name: 'Overtime', q: 'One more, or stop?', time: '10 min', grades: 'Grades 6 to 12', how: 'Push your luck for more pay', comp: Overtime },
+]
+
+function Hub({ onPick, onHome }) {
+  return (
+    <div className="pick">
+      <button className="back" onClick={onHome}>Home</button>
+      <h1>Pick a game</h1>
+      <p className="sub">Eight games, one town. Every game asks one big question about work and money.</p>
+      <div className="hub">
+        {GAMES.map(g => (
+          <button key={g.id} className={'hubcard' + (g.star ? ' star' : '')} onClick={() => onPick(g.id)}>
+            {g.star && <span className="ribbon">3D</span>}
+            <span className="q">{g.q}</span>
+            <h2>{g.name}</h2>
+            <p>{g.how}</p>
+            <span className="meta">{g.time} &middot; {g.grades}</span>
+          </button>
+        ))}
+      </div>
+    </div>
+  )
+}
 
 const base = import.meta.env.BASE_URL
 const art = f => `${base}art/${f}`
@@ -28,12 +67,13 @@ function Logo({ big }) {
 
 /* ================================================================= website */
 
-function Home({ onPlay }) {
+function Home({ onPlay, onGame }) {
   return (
     <div className="site">
       <header className="nav">
         <Logo />
         <nav>
+          <a href="#games">Games</a>
           <a href="#how">How to play</a>
           <a href="#characters">Characters</a>
           <a href="#print">Print and play</a>
@@ -66,6 +106,21 @@ function Home({ onPlay }) {
           <li><b>3</b><h3>Get hired and climb</h3><p>A job pays every year and gives you experience. Build enough skills and years and you move up from Entry to Qualified to Senior.</p></li>
         </ol>
         <p className="lesson">Getting turned down is not the end. Every rejection trains you, so the next job is closer.</p>
+      </section>
+
+      <section id="games" className="band">
+        <h2>Eight games, one town</h2>
+        <div className="hub">
+          {GAMES.map(g => (
+            <button key={g.id} className={'hubcard' + (g.star ? ' star' : '')} onClick={() => onGame(g.id)}>
+              {g.star && <span className="ribbon">3D</span>}
+              <span className="q">{g.q}</span>
+              <h2>{g.name}</h2>
+              <p>{g.how}</p>
+              <span className="meta">{g.time} &middot; {g.grades}</span>
+            </button>
+          ))}
+        </div>
       </section>
 
       <section id="characters" className="band alt">
@@ -107,10 +162,11 @@ function Home({ onPlay }) {
 
 /* ============================================================ pick a person */
 
-function Pick({ onStart, onBack }) {
+function Pick({ onStart, onBack, gameName }) {
   return (
     <div className="pick">
       <button className="back" onClick={onBack}>Back</button>
+      {gameName && <span className="kicker center-k">{gameName}</span>}
       <h1>Who are you?</h1>
       <p className="sub">You all start with {money(500)}. You will not all finish in the same place.</p>
       <div className="pick-grid">
@@ -194,6 +250,8 @@ function WhyChecklist({ p, job }) {
 
 export default function App() {
   const [view, setView] = React.useState('home')
+  const [gameId, setGameId] = React.useState('gethired')
+  const [profile, setProfile] = React.useState(null)
   const [game, setGame] = React.useState(null)
   const [pick, setPick] = React.useState(null)
   const [report, setReport] = React.useState(null)
@@ -206,7 +264,10 @@ export default function App() {
   const you = game && game.players[0]
   const placing = game && !game.over && you.discs > 0 && !report
 
-  function start(id) { setGame(newGame(id)); setReport(null); setSkillBuys([]); setView('game') }
+  function start(id) {
+    if (gameId !== 'gethired') { setProfile(id); setView('mini'); return }
+    setGame(newGame(id)); setReport(null); setSkillBuys([]); setView('game')
+  }
 
   function choose(zone) {
     if (!placing || freeSlots(game, zone) <= 0) return
@@ -237,15 +298,20 @@ export default function App() {
         const me = n.players[0]
         const hired = me.job && me.job.title !== beforeJob ? me.job : null
         const promoted = me.career > beforeCareer ? me.career : null
-        setReport({ events: n.events || [], card: n.marketCard, over: n.over, hired, promoted, me: { ...me, skills: { ...me.skills } } })
+        setReport({ events: n.events || [], card: n.marketCard, impact: n.marketImpact, over: n.over, hired, promoted, me: { ...me, skills: { ...me.skills } } })
         return n
       })
       setSkillBuys([]); setBusy(false)
     }, 500)
   }
 
-  if (view === 'home') return <Home onPlay={() => setView('pick')} />
-  if (view === 'pick' || !game) return <Pick onStart={start} onBack={() => setView('home')} />
+  if (view === 'home') return <Home onPlay={() => setView('hub')} onGame={id => { setGameId(id); setView('pick') }} />
+  if (view === 'hub') return <Hub onPick={id => { setGameId(id); setView('pick') }} onHome={() => setView('home')} />
+  if (view === 'mini') {
+    const G = GAMES.find(g => g.id === gameId).comp
+    return <G key={gameId + profile} profileId={profile} onHome={() => setView('hub')} />
+  }
+  if (view === 'pick' || !game) return <Pick onStart={start} onBack={() => setView('hub')} gameName={GAMES.find(g => g.id === gameId).name} />
 
   /* -------------------------------------------------------------- the end */
   if (game.over && !report) {
@@ -275,7 +341,7 @@ export default function App() {
         </div>
         <div className="end-cta">
           <button className="btn sun big" onClick={() => setView('pick')}>Play again</button>
-          <button className="btn ghost big" onClick={() => setView('home')}>Home</button>
+          <button className="btn ghost big" onClick={() => setView('hub')}>All games</button>
         </div>
       </div>
     )
@@ -285,7 +351,7 @@ export default function App() {
   return (
     <div className="play">
       <header className="hud">
-        <button className="back" onClick={() => setView('home')}>Home</button>
+        <button className="back" onClick={() => setView('hub')}>Games</button>
         <div className="year"><span>Year</span><b>{game.round}</b><span>of {ROUNDS}</span></div>
         <div className="workers">
           {[0, 1, 2].map(i => <i key={i} className={'w' + (i < you.discs ? ' on' : '')} style={{ '--c': PLAYER_COLOURS[0] }} />)}
@@ -377,11 +443,41 @@ export default function App() {
                   <li key={i}>
                     <span className="ez">{e.zone}</span>
                     <p>{e.text}</p>
+                    {e.compete && e.compete.table.length > 1 && (
+                      <div className="contest">
+                        <table>
+                          <thead><tr><th>Candidate</th><th>{e.compete.skill}</th><th>Years</th><th>Education</th><th></th></tr></thead>
+                          <tbody>{e.compete.table.map((c, j) => (
+                            <tr key={j} className={(c.won ? 'won ' : '') + (c.human ? 'me' : '')}>
+                              <td>{c.human ? 'You' : c.name.replace('The ', '')}</td>
+                              <td>{c.skill}</td><td>{c.exp}</td><td>{EDU[c.edu]}</td>
+                              <td>{c.won ? <span className="ok">Hired</span> : c.qualified ? <span className="meh">Qualified</span> : <span className="no">Not eligible</span>}</td>
+                            </tr>))}</tbody>
+                        </table>
+                        <p className="decider">{e.compete.reason}</p>
+                      </div>
+                    )}
                     {e.detail && <ul className="why">{e.detail.map((d, j) => <li key={j}>{d}</li>)}</ul>}
                   </li>
                 ))}
               </ul>
-              {report.card && <div className="news"><span className="kicker">Town news</span><b>{report.card.t}.</b> {report.card.d}</div>}
+              {report.card && (
+                <div className="news">
+                  <span className="kicker">Town news</span>
+                  <b>{report.card.t}.</b> {report.card.d}
+                  {report.impact && report.impact.moves.length > 0 && (
+                    <div className="moves">{report.impact.moves.map(m => (
+                      <span key={m.sector} className={m.to > m.from ? 'up' : 'down'}>{m.sector} {m.from > 0 ? '+' + m.from : m.from} to {m.to > 0 ? '+' + m.to : m.to}</span>
+                    ))}</div>
+                  )}
+                  {report.impact && report.impact.impacts.length > 0 && (
+                    <ul className="hits">{report.impact.impacts.map((h, j) => (
+                      <li key={j} className={h.human ? 'me' : ''}><b>{h.human ? 'You' : h.who}</b> {h.text}</li>
+                    ))}</ul>
+                  )}
+                  {report.impact && report.impact.moves.length === 0 && report.impact.impacts.length === 0 && <p className="calm">Nobody's job or pay changed this time.</p>}
+                </div>
+              )}
               <button className="btn sun big" onClick={() => setReport(null)}>{report.over ? 'See who won' : 'Next year'}</button>
             </motion.div>
           </motion.div>
