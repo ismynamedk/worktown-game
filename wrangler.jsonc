@@ -1,0 +1,9 @@
+{
+  "name": "worktown-game",
+  "compatibility_date": "2026-09-20",
+  "account_id": "5fdc2013f43780d59aebd0bf72d798bd",
+  "assets": {
+    "directory": "./dist",
+    "not_found_handling": "single-page-application"
+  }
+}
