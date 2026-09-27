@@ -1,8 +1,8 @@
 import React from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { ZONES, SKILLS, EDU, SKILL_COST, PROFILES, ROUNDS, SECTORS, UPGRADES } from '../data.js'
+import { ZONES, SKILLS, EDU, SKILL_COST, PROFILES, ROUNDS, SECTORS, UPGRADES, JOBS } from '../data.js'
 import {
-  newGame, resolve, place, freeSlots, botChoice, salaryOf, totalSkill, ranking, cloneGame,
+  newGame, resolve, place, freeSlots, botChoice, salaryOf, totalSkill, ranking, cloneGame, qualifies, missingReason,
 } from '../engine.js'
 import Board3D, { PLAYER_COLOURS } from '../scene/Board3D.jsx'
 import Board2D, { canRun3D } from '../scene/Board2D.jsx'
@@ -179,6 +179,10 @@ function Home({ onPlay, onGame }) {
             <b>The Rulebook</b>
             <span>All eight games, new edition, with one full year worked through step by step.</span>
           </a>
+          <a className="dl" href={`${base}downloads/work-town-job-ladder.pdf`} download>
+            <b>Job Ladder for the table</b>
+            <span>All 24 jobs and what each needs, so every player can check their chances on paper.</span>
+          </a>
           <a className="dl" href={`${base}downloads/work-town-year-card.pdf`} download>
             <b>Year card for the table</b>
             <span>What to do at the end of every year on paper. Print one per table.</span>
@@ -308,6 +312,68 @@ function MeCard({ p, market }) {
   )
 }
 
+/* ---------------------------------------------------------------- chances
+   Every player, not only the one holding the phone, can see where they stand:
+   which jobs they could take today, which are one step away, and what the next
+   level needs. */
+function chancesOf(p, flags = {}) {
+  const can = JOBS.filter(j => qualifies(p, j, flags)).sort((a, b) => b.pay - a.pay)
+  const near = JOBS.filter(j => !qualifies(p, j, flags))
+    .map(j => ({ j, miss: missingReason(p, j, flags) }))
+    .filter(x => x.miss.length === 1).sort((a, b) => b.j.pay - a.j.pay)
+  const next = UPGRADES.find(u => p.career < u.to)
+  return { can, near, next }
+}
+
+function ChancesCard({ p, flags, compact }) {
+  const c = chancesOf(p, flags)
+  const lvl = ['', 'Entry', 'Qualified', 'Senior'][p.career]
+  return (
+    <div className="chances">
+      <div className="ch-top"><b>{p.you ? 'Your' : `${p.name}'s`} chances</b><span className="lvl">{lvl}</span></div>
+      <p className="ch-line"><strong>{c.can.length}</strong> of {JOBS.length} jobs {p.you ? 'you' : 'they'} could take today
+        {c.can.length ? <>, best: <em>{c.can[0].title} ({money(c.can[0].pay)})</em></> : ''}.</p>
+      {!compact && c.near.length > 0 && (
+        <ul className="ch-near">{c.near.slice(0, 3).map(x => (
+          <li key={x.j.title}><b>{x.j.title}</b> ({money(x.j.pay)}) is one step away: {p.you ? x.miss[0] : x.miss[0].replace('you have', 'has').replace('you are', 'is')}.</li>
+        ))}</ul>
+      )}
+      {c.next
+        ? <p className="ch-next">Next level, {c.next.name}: needs {c.next.skills} skill points and {c.next.years} years. {p.you ? 'You have' : 'Has'} {totalSkill(p)} and {p.exp}.</p>
+        : <p className="ch-next">Senior. The top of the ladder.</p>}
+    </div>
+  )
+}
+
+/** The whole table, open to everyone: levels, skills, years, jobs and chances. */
+function Scoreboard({ game, onClose }) {
+  return (
+    <div className="scrim" onClick={onClose}>
+      <div className="modal wide" onClick={e => e.stopPropagation()}>
+        <span className="kicker">Everyone at the table</span>
+        <h2>Levels, skills and chances</h2>
+        <div className="sb-wrap"><table className="mini sb">
+          <thead><tr><th>Player</th><th>Level</th><th>Education</th><th>Making</th><th>Serving</th><th>Digital</th><th>Caring</th><th>Years</th><th>Job</th><th>Cash</th><th>Jobs open to them</th></tr></thead>
+          <tbody>{game.players.map(p => {
+            const c = chancesOf(p, game.flags)
+            return (
+              <tr key={p.id}>
+                <td><i className="dot" style={{ background: PLAYER_COLOURS[p.id] }} /> {p.you ? 'You' : p.name}{!p.human && <em className="cpu"> computer</em>}</td>
+                <td>{['', 'Entry', 'Qualified', 'Senior'][p.career]}</td><td>{EDU[p.edu]}</td>
+                {SKILLS.map(sk => <td key={sk}>{p.skills[sk]}</td>)}
+                <td>{p.exp}</td><td>{p.job ? p.job.title : 'None'}</td><td>{money(p.cash)}</td>
+                <td><b>{c.can.length}</b>{c.near.length ? `, ${c.near.length} one step away` : ''}</td>
+              </tr>
+            )
+          })}</tbody>
+        </table></div>
+        <p className="hint">On paper this is simply everyone's player sheet, kept face up on the table.</p>
+        <button className="btn sun big" onClick={onClose}>Back to the game</button>
+      </div>
+    </div>
+  )
+}
+
 function Rivals({ players }) {
   return (
     <div className="rivals">
@@ -357,6 +423,7 @@ function Game() {
   const [humans, setHumans] = React.useState([0])
   const [turn, setTurn] = React.useState(0)
   const [handoff, setHandoff] = React.useState(false)
+  const [board, setBoard] = React.useState(false)
 
   React.useEffect(() => { window.scrollTo(0, 0) }, [view])
 
@@ -478,6 +545,7 @@ function Game() {
     <div className="play">
       <header className="hud">
         <button className="back" onClick={() => setView('hub')}>Games</button>
+        <button className="back sbbtn" onClick={() => setBoard(true)}>Everyone</button>
         <div className="year"><span>Year</span><b>{game.round}</b><span>of {ROUNDS}</span></div>
         <div className="workers">
           {[0, 1, 2].map(i => <i key={i} className={'w' + (i < you.discs ? ' on' : '')} style={{ '--c': PLAYER_COLOURS[you.id] }} />)}
@@ -494,6 +562,7 @@ function Game() {
 
       <aside className="panel">
         <MeCard p={you} market={game.market} />
+        <ChancesCard p={you} flags={game.flags} />
         <Rivals players={game.players} />
         <div className="market-mini">
           <b>Labour market</b>
@@ -510,6 +579,7 @@ function Game() {
         </button>
       </div>
 
+      {board && <Scoreboard game={game} onClose={() => setBoard(false)} />}
       <AnimatePresence>
         {handoff && !report && !game.over && (
           <motion.div className="scrim handoff" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
@@ -518,6 +588,7 @@ function Game() {
               <h2>Pass the phone to</h2>
               <div className="passto"><i className="dot" style={{ background: PLAYER_COLOURS[you.id] }} />{you.name}</div>
               <p>Everyone else, look away. {you.name}, you have three workers to place.</p>
+              <ChancesCard p={you} flags={game.flags} compact />
               <button className="btn sun big" onClick={() => setHandoff(false)}>I am {you.name}, go</button>
             </motion.div>
           </motion.div>
@@ -620,6 +691,13 @@ function Game() {
                 )}
                 <p className="calm">Everyone with a job also gets one more year of experience.{report.promotions.length ? '' : ' Nobody was promoted this year.'}</p>
                 {report.promotions.map((t, i) => <p key={i} className="up-line"><b>Promotion:</b> {t}</p>)}
+              </div>
+              <div className="standing">
+                <span className="kicker">Where everyone stands now</span>
+                {game.players.map(p => {
+                  const c = chancesOf(p, game.flags)
+                  return <p key={p.id}><i className="dot" style={{ background: PLAYER_COLOURS[p.id] }} /> <b>{p.you ? 'You' : p.name}</b>: {['', 'Entry', 'Qualified', 'Senior'][p.career]}, {p.exp} yr, {totalSkill(p)} skill points, {p.job ? p.job.title : 'no job'}, {money(p.cash)}. Could take <b>{c.can.length}</b> jobs today.</p>
+                })}
               </div>
               {report.card && (
                 <div className="news">

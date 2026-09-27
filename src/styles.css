@@ -464,3 +464,19 @@ table.mini tr.won td{ background:#D6F5DD; }
   font-size:14px; padding:8px 12px; }
 .netbar.up{ background:var(--violet); }
 .netbar button{ margin-left:8px; border:0; border-radius:999px; background:var(--sun); color:var(--ink); font-weight:800; padding:4px 12px; }
+
+/* chances: every player can see where they stand */
+.chances{ background:var(--card); border-radius:var(--r); padding:12px 14px; box-shadow:var(--shadow); border-left:5px solid var(--mint); text-align:left; }
+.ch-top{ display:flex; align-items:center; gap:8px; } .ch-top b{ font-family:var(--head); font-size:17px; }
+.ch-top .lvl{ margin-left:auto; background:var(--sun); border-radius:999px; padding:1px 10px; font-weight:800; font-size:12px; }
+.ch-line{ margin:6px 0; font-weight:700; font-size:14px; } .ch-line strong{ font-family:var(--head); font-size:20px; color:var(--sage); }
+.ch-line em{ font-style:normal; color:var(--ink); }
+.ch-near{ margin:4px 0 6px; padding-left:18px; font-size:13.5px; color:var(--ink-2); font-weight:700; }
+.ch-next{ margin:4px 0 0; font-size:13px; font-weight:800; color:var(--violet); }
+.handoff .chances{ margin:10px 0 14px; }
+.sbbtn{ margin-left:-6px; }
+.sb-wrap{ overflow-x:auto; margin:6px 0 10px; } table.sb{ min-width:760px; } table.sb td{ white-space:nowrap; }
+.cpu{ font-style:normal; font-size:11px; color:var(--ink-2); }
+.standing{ background:#EEFBF1; border-radius:16px; padding:12px 14px; margin:10px 0 14px; }
+.standing p{ margin:5px 0; font-size:14px; font-weight:700; line-height:1.45; }
+.standing p .dot{ vertical-align:-2px; margin-right:4px; }
