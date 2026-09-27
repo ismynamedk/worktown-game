@@ -452,3 +452,15 @@ table.mini tr.won td{ background:#D6F5DD; }
 .steplabel{ display:block; margin-top:6px; }
 .payday{ background:#FFF8E6; border-radius:16px; padding:12px 14px; margin:10px 0 14px; }
 .payday table.mini{ background:transparent; }
+
+/* install and offline */
+.install{ margin-top:14px; background:var(--card); border-radius:18px; padding:14px 16px; box-shadow:var(--shadow);
+  display:flex; flex-direction:column; gap:6px; max-width:420px; }
+.install b{ font-family:var(--head); font-size:18px; } .install span{ color:var(--ink-2); font-weight:700; font-size:14px; }
+.install .btn{ align-self:flex-start; min-height:44px; }
+@media (max-width:860px){ .install{ margin-left:auto; margin-right:auto; text-align:left; } }
+.ok-line{ color:var(--sage) !important; font-weight:800; }
+.netbar{ position:sticky; top:0; z-index:90; background:var(--ink); color:#fff; text-align:center; font-weight:800;
+  font-size:14px; padding:8px 12px; }
+.netbar.up{ background:var(--violet); }
+.netbar button{ margin-left:8px; border:0; border-radius:999px; background:var(--sun); color:var(--ink); font-weight:800; padding:4px 12px; }

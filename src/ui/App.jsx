@@ -6,6 +6,7 @@ import {
 } from '../engine.js'
 import Board3D, { PLAYER_COLOURS } from '../scene/Board3D.jsx'
 import Board2D, { canRun3D } from '../scene/Board2D.jsx'
+import { usePWA } from '../pwa.js'
 const USE_3D = canRun3D()
 import BlindApplication from '../games/BlindApplication.jsx'
 import Overtime from '../games/Overtime.jsx'
@@ -67,6 +68,28 @@ function Logo({ big }) {
     : <span className={big ? 'wordmark big' : 'wordmark'}>Work Town</span>
 }
 
+/** Offered, never pushed. iPhone has no prompt, so it gets the Share-sheet words instead. */
+function InstallCard() {
+  const pwa = usePWA()
+  if (pwa.standalone) return <p className="fine ok-line">Installed. Works with no internet.</p>
+  if (pwa.canPrompt) return (
+    <div className="install"><b>Play with no internet</b><span>Install Work Town like an app. All eight games then work offline.</span>
+      <button className="btn ghost" onClick={pwa.install}>Install the app</button></div>
+  )
+  if (pwa.ios) return (
+    <div className="install"><b>Play with no internet</b><span>Tap <strong>Share</strong>, then <strong>Add to Home Screen</strong>. All eight games then work offline.</span></div>
+  )
+  return <p className="fine">Open it once with internet and it keeps working offline.</p>
+}
+
+/** Honest status: offline is fine for playing, not for downloads. */
+function NetBar() {
+  const pwa = usePWA()
+  if (pwa.update) return <div className="netbar up">A new version of Work Town is ready. <button onClick={pwa.applyUpdate}>Update now</button></div>
+  if (!pwa.online) return <div className="netbar">You are offline. Every game still works. Printing downloads need internet.</div>
+  return null
+}
+
 /* ================================================================= website */
 
 function Home({ onPlay, onGame }) {
@@ -94,6 +117,7 @@ function Home({ onPlay, onGame }) {
             <a className="btn ghost big" href="#print">Print and play</a>
           </div>
           <p className="fine">Free to play on any phone, tablet or laptop. No sign up.</p>
+          <InstallCard />
         </div>
         <div className="hero-art">
           <img src={art('board.jpg')} alt="The town of Work Town seen from above" />
@@ -317,6 +341,10 @@ function WhyChecklist({ p, job }) {
 }
 
 export default function App() {
+  return <><NetBar /><Game /></>
+}
+
+function Game() {
   const [view, setView] = React.useState('home')
   const [gameId, setGameId] = React.useState('gethired')
   const [profile, setProfile] = React.useState(null)
