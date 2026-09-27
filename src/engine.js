@@ -4,26 +4,34 @@
 import {
   JOBS, MARKET, OOPS, PRODUCTIVITY, PROFILES, SKILLS, SECTORS,
   EDU, EDU_COST, SKILL_COST, PROD_PER_POINT, PROD_CAP, MARKET_STEP,
-  UPGRADES, ZONES, ROUNDS, DISCS, START_CASH,
+  UPGRADES, ZONES, ROUNDS, DISCS, START_CASH, MENTOR_COST,
 } from './data.js'
 
 export const rnd = n => Math.floor(Math.random() * n)
 export const shuffle = a => { const b = a.slice(); for (let i = b.length - 1; i > 0; i--) { const j = rnd(i + 1);[b[i], b[j]] = [b[j], b[i]] } return b }
 
-export function makePlayer(profile, i, human) {
+export function makePlayer(profile, i, human, label) {
   const skills = { Making: 0, Serving: 0, Digital: 0, Caring: 0 }
   skills[profile.skill] = profile.level
   return {
-    id: i, human, name: human ? 'You' : profile.name, profile: profile.id,
+    id: i, human, name: human ? (label || 'You') : profile.name, profile: profile.id, you: human && !label,
     cash: START_CASH, edu: profile.edu, skills, exp: profile.exp,
     career: 1, job: null, earned: 0, discs: DISCS, skip: false,
   }
 }
 
-export function newGame(humanProfileId) {
-  const chosen = PROFILES.find(p => p.id === humanProfileId) || PROFILES[0]
-  const rest = shuffle(PROFILES.filter(p => p.id !== chosen.id)).slice(0, 3)
-  const players = [makePlayer(chosen, 0, true), ...rest.map((p, i) => makePlayer(p, i + 1, false))]
+/** One human (solo, called "You") or up to four people passing one device.
+ *  `who` is a profile id, or a list of { profileId, name }. Empty seats get computer players. */
+export function newGame(who) {
+  const humans = Array.isArray(who) ? who : [{ profileId: who }]
+  const solo = humans.length === 1 && !humans[0].name
+  const players = humans.map((h, i) => makePlayer(PROFILES.find(p => p.id === h.profileId) || PROFILES[0], i, true, solo ? null : (h.name || `Player ${i + 1}`)))
+  const taken = new Set(humans.map(h => h.profileId))
+  const spare = shuffle(PROFILES.filter(p => !taken.has(p.id)))
+  while (players.length < 4) {
+    const prof = spare.length ? spare.shift() : PROFILES[players.length % PROFILES.length]
+    players.push(makePlayer(prof, players.length, false))
+  }
   return {
     round: 1, phase: 'place', players,
     placements: {},                       // zoneId -> [playerId]
@@ -109,24 +117,23 @@ export function botChoice(g, p) {
   const open = ZONES.filter(z => freeSlots(g, z) > 0)
   const has = id => open.some(z => z.id === id)
   const canQualifySomething = g.deck.slice(0, 6).some(j => qualifies(p, j, g.flags))
+  // every choice carries its reason, so a student can see WHY a rival went there
+  const r = (id, why) => { p.lastWhy = why; return id }
 
-  // one point short of an upgrade is always worth buying
   const nextUp = UPGRADES.find(u => p.career < u.to)
   if (nextUp && p.cash >= SKILL_COST && totalSkill(p) < nextUp.skills &&
-      p.exp >= nextUp.years - 1 && has('skill')) return 'skill'
-
-  // a mentor is worth it when you can afford it and years are what you lack
-  if (nextUp && p.cash >= 400 && p.exp < nextUp.years && totalSkill(p) >= nextUp.skills - 1 && has('career')) return 'career'
-
-  if (!p.job && canQualifySomething && has('search')) return 'search'
-  if (!p.job && canQualifySomething && has('match')) return 'match'
-  if (!p.job && canQualifySomething && has('compete')) return 'compete'
-  if (p.cash >= SKILL_COST && totalSkill(p) < 5 && has('skill')) return 'skill'
-  if (p.cash >= EDU_COST[p.edu + 1] && p.edu < 3 && has('grad')) return 'grad'
-  if (p.exp < 5 && has('exp')) return 'exp'
-  if (p.job && has('prod')) return 'prod'
-  if (has('rest')) return 'rest'
-  return open.length ? open[0].id : null
+      p.exp >= nextUp.years - 1 && has('skill')) return r('skill', `one skill point away from ${nextUp.name}`)
+  if (nextUp && p.cash >= MENTOR_COST + 150 && p.exp < nextUp.years && totalSkill(p) >= nextUp.skills - 1 && has('career'))
+    return r('career', `has the money, and years are all that stand between them and ${nextUp.name}`)
+  if (!p.job && canQualifySomething && has('search')) return r('search', 'has no job and qualifies for some of the jobs on offer')
+  if (!p.job && canQualifySomething && has('match')) return r('match', 'has no job, so two chances at a vacancy is worth it')
+  if (!p.job && canQualifySomething && has('compete')) return r('compete', 'has no job and thinks they can beat the others for one')
+  if (p.cash >= SKILL_COST && totalSkill(p) < 5 && has('skill')) return r('skill', 'has spare money, so builds skills for better jobs')
+  if (p.cash >= EDU_COST[p.edu + 1] && p.edu < 3 && has('grad')) return r('grad', `can afford the next education level (${EDU[p.edu + 1]})`)
+  if (p.exp < 5 && has('exp')) return r('exp', 'needs more years of experience')
+  if (p.job && has('prod')) return r('prod', 'already has a job, so extra good work pays')
+  if (has('rest')) return r('rest', 'nothing better was still open')
+  return open.length ? r(open[0].id, 'it was the only place left') : null
 }
 
 /** REJECTION IS WHERE PEOPLE TRAIN. A turned-down player takes one free skill
@@ -138,7 +145,8 @@ export function trainOnRejection(p) {
   return null
 }
 
-const was = p => (p.human ? 'You were' : p.name + ' was')
+const who = p => (p.you ? 'You' : p.name)
+const was = p => (p.you ? 'You were' : p.name + ' was')
 
 function give(g, p, msg) { g.log.push({ round: g.round, who: p.name, msg }) }
 
@@ -171,7 +179,7 @@ export function resolve(g) {
       } else {
         const win = strongest(cands, job)
         const table = ids.map(i => P[i]).map(p => ({
-          name: p.name, human: !!p.human, qualified: qualifies(p, job, g.flags),
+          name: p.name, human: !!p.you, qualified: qualifies(p, job, g.flags),
           skill: p.skills[job.sk], exp: p.exp, edu: p.edu, cash: p.cash, won: p === win,
         }))
         const reason = decider(cands, win, job)
@@ -206,7 +214,7 @@ export function resolve(g) {
         else {
           trainOnRejection(p)
           seen.forEach(j => g.discard.push(j))
-          if (p.human) g.events.push({ zone: zone.name, text: `${seen[0].title}: you did not qualify. You trained instead, so the round was not wasted.`, detail: [missingReason(p, seen[0], g.flags).join('; ')] })
+          if (p.human) g.events.push({ zone: zone.name, text: p.you ? `${seen[0].title}: you did not qualify. You trained instead, so the round was not wasted.` : `${seen[0].title}: ${p.name} did not qualify, and trained instead.`, detail: [missingReason(p, seen[0], g.flags).join('; ')] })
         }
       }
       if (zid === 'employ') {
@@ -222,8 +230,8 @@ export function resolve(g) {
       if (zid === 'exp') { p.exp++; give(g, p, 'took a year of experience') }
       if (zid === 'prod') {
         const c = draw(g, 'prodDeck')
-        if (p.skills[c.sk] >= c.n) { p.cash += c.pay; if (c.exp) p.exp += c.exp; g.events.push({ zone: zone.name, text: `${p.name}: ${c.t}. Took ${c.pay}.` }) }
-        else g.events.push({ zone: zone.name, text: `${p.name}: ${c.t}. Short of ${c.sk} ${c.n}, nothing earned.` })
+        if (p.skills[c.sk] >= c.n) { p.cash += c.pay; if (c.exp) p.exp += c.exp; g.events.push({ zone: zone.name, text: p.you ? `${c.t}. You took ${c.pay}.` : `${p.name}: ${c.t}. Took ${c.pay}.` }) }
+        else g.events.push({ zone: zone.name, text: p.you ? `${c.t}, but you were short of ${c.sk} ${c.n}, so nothing earned.` : `${p.name}: ${c.t}. Short of ${c.sk} ${c.n}, nothing earned.` })
         g.prodDeck.push(c)
       }
       if (zid === 'risk') {
@@ -241,25 +249,33 @@ export function resolve(g) {
         g.oopsDeck.push(c)
       }
       if (zid === 'career') {
-        if (p.cash >= 200) {
-          p.cash -= 200; p.exp += 1
-          g.events.push({ zone: zone.name, text: `${p.name} paid a mentor 200 for one more year of experience.` })
+        if (p.cash >= MENTOR_COST) {
+          p.cash -= MENTOR_COST; p.exp += 1
+          g.events.push({ zone: zone.name, text: `${who(p)} paid a mentor ${MENTOR_COST} for one more year of experience.` })
         } else {
-          g.events.push({ zone: zone.name, text: `${p.name} could not afford a mentor (250).` })
+          g.events.push({ zone: zone.name, text: `${who(p)} could not afford a mentor (${MENTOR_COST}).` })
         }
       }
       if (zid === 'rest') p.cash += 100
     }
   }
 
-  // pay, age, upgrade
+  // pay day, year end, promotions: recorded step by step, exactly as the paper game does them
+  g.payday = []
+  g.promotions = []
   for (const p of P) {
     const s = salaryOf(p, g.market)
+    if (p.job) {
+      const step = g.market[SECTORS[p.job.sk]] || 0
+      const over = Math.max(0, p.skills[p.job.sk] - p.job.need)
+      g.payday.push({ name: who(p), job: p.job.title, salary: p.job.pay,
+        bonus: Math.min(over * PROD_PER_POINT, PROD_CAP), market: step * MARKET_STEP, total: s })
+    }
     if (s) { p.cash += s; p.earned += s; p.exp++ }
     for (const u of UPGRADES) {
       if (p.career < u.to && totalSkill(p) >= u.skills && p.exp >= u.years) {
         p.career = u.to
-        g.events.push({ zone: 'Career', text: `${p.name} reached ${u.name}: ${totalSkill(p)} skill points and ${p.exp} years.` })
+        g.promotions.push(`${who(p)} reached ${u.name}: ${totalSkill(p)} skill points and ${p.exp} years.`)
       }
     }
   }
@@ -282,9 +298,9 @@ export function resolve(g) {
     .map(k => ({ sector: k, from: beforeMarket[k], to: g.market[k] }))
   const impacts = []
   P.forEach((p, i) => {
-    if (jobBefore[i] && !p.job) impacts.push({ who: p.name, human: !!p.human, text: `lost the job as ${jobBefore[i]}` })
+    if (jobBefore[i] && !p.job) impacts.push({ who: p.name, human: !!p.you, text: `lost the job as ${jobBefore[i]}` })
     const now = salaryOf(p, g.market)
-    if (p.job && now !== payBefore[i]) impacts.push({ who: p.name, human: !!p.human, text: `pay ${now > payBefore[i] ? 'rises' : 'falls'} from ${payBefore[i]} to ${now}` })
+    if (p.job && now !== payBefore[i]) impacts.push({ who: p.name, human: !!p.you, text: `pay ${now > payBefore[i] ? 'rises' : 'falls'} from ${payBefore[i]} to ${now}` })
   })
   g.marketImpact = { moves, impacts }
 

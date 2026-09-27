@@ -5,6 +5,8 @@ import {
   newGame, resolve, place, freeSlots, botChoice, salaryOf, totalSkill, ranking, cloneGame,
 } from '../engine.js'
 import Board3D, { PLAYER_COLOURS } from '../scene/Board3D.jsx'
+import Board2D, { canRun3D } from '../scene/Board2D.jsx'
+const USE_3D = canRun3D()
 import BlindApplication from '../games/BlindApplication.jsx'
 import Overtime from '../games/Overtime.jsx'
 import SkillDraft from '../games/SkillDraft.jsx'
@@ -147,11 +149,15 @@ function Home({ onPlay, onGame }) {
         <div className="downloads">
           <a className="dl big" href={`${base}downloads/work-town-print-kit.zip`} download>
             <b>Download the print kit</b>
-            <span>The board, a labelled board, 4 characters, 64 cards, card backs, money, pawns and the player sheet, plus ready-to-print sheets of 9 cards per A4 page. 23 MB.</span>
+            <span>The board, a labelled board, 4 characters, 64 cards, card backs, money, pawns and the player sheet, plus ready-to-print sheets of 9 cards per A4 page. 24 MB.</span>
           </a>
           <a className="dl" href={`${base}downloads/work-town-rulebook.pdf`} download>
             <b>The Rulebook</b>
-            <span>All eight games, new edition, 9 pages.</span>
+            <span>All eight games, new edition, with one full year worked through step by step.</span>
+          </a>
+          <a className="dl" href={`${base}downloads/work-town-year-card.pdf`} download>
+            <b>Year card for the table</b>
+            <span>What to do at the end of every year on paper. Print one per table.</span>
           </a>
         </div>
       </section>
@@ -191,6 +197,64 @@ function Pick({ onStart, onBack, gameName }) {
   )
 }
 
+function Setup({ onStart, onBack }) {
+  const [count, setCount] = React.useState(null)
+  const [seats, setSeats] = React.useState([])
+  const [i, setI] = React.useState(0)
+  function choose(n) {
+    setCount(n); setI(0)
+    setSeats(Array.from({ length: n }, (_, k) => ({ name: n === 1 ? '' : `Player ${k + 1}`, profileId: null })))
+  }
+  function pickChar(pid) {
+    const next = seats.map((s, k) => (k === i ? { ...s, profileId: pid } : s))
+    setSeats(next)
+    if (i + 1 < count) setI(i + 1)
+    else onStart(count === 1 ? next[0].profileId : next.map(s => ({ profileId: s.profileId, name: s.name.trim() || 'Player' })))
+  }
+  if (!count) return (
+    <div className="pick">
+      <button className="back" onClick={onBack}>Back</button>
+      <span className="kicker center-k">Get Hired</span>
+      <h1>How many people are playing?</h1>
+      <p className="sub">Play alone against the computer, or pass one phone round a table. Empty seats are played by the computer.</p>
+      <div className="counts">
+        {[1, 2, 3, 4].map(n => (
+          <button key={n} className="countbtn" onClick={() => choose(n)}>
+            <b>{n}</b><span>{n === 1 ? 'Just me' : `${n} people`}</span>
+            <em>{n < 4 ? `${4 - n} computer player${4 - n > 1 ? 's' : ''}` : 'No computer players'}</em>
+          </button>
+        ))}
+      </div>
+    </div>
+  )
+  const taken = new Set(seats.filter((s, k) => k !== i && s.profileId).map(s => s.profileId))
+  return (
+    <div className="pick">
+      <button className="back" onClick={() => (i ? setI(i - 1) : setCount(null))}>Back</button>
+      <span className="kicker center-k">{count > 1 ? `Player ${i + 1} of ${count}` : 'Get Hired'}</span>
+      {count > 1 && (
+        <div className="namebox">
+          <i className="dot" style={{ background: PLAYER_COLOURS[i] }} />
+          <input value={seats[i].name} maxLength={14} aria-label="Player name"
+            onChange={e => setSeats(seats.map((s, k) => (k === i ? { ...s, name: e.target.value } : s)))} />
+        </div>
+      )}
+      <h1>{count > 1 ? `${seats[i].name || 'Player ' + (i + 1)}, who are you?` : 'Who are you?'}</h1>
+      <p className="sub">Everyone starts with {money(500)}. You will not all finish in the same place.</p>
+      <div className="pick-grid">
+        {PROFILES.map(p => (
+          <button key={p.id} className="pick-card" disabled={taken.has(p.id)} onClick={() => pickChar(p.id)}>
+            <div className="pick-art"><Art src={art(CHAR_ART[p.id])} alt={p.name} /></div>
+            <h2>{p.name}</h2>
+            <p>{taken.has(p.id) ? 'Already taken' : p.blurb}</p>
+            <div className="chips"><span>{EDU[p.edu]}</span><span>{p.skill} {p.level}</span><span>{p.exp} yr</span></div>
+          </button>
+        ))}
+      </div>
+    </div>
+  )
+}
+
 /* ================================================================ the game */
 
 function MeCard({ p, market }) {
@@ -198,8 +262,8 @@ function MeCard({ p, market }) {
   return (
     <div className="me">
       <div className="me-top">
-        <i className="dot" style={{ background: PLAYER_COLOURS[0] }} />
-        <b>You</b>
+        <i className="dot" style={{ background: PLAYER_COLOURS[p.id] }} />
+        <b>{p.you ? 'You' : p.name}</b>
         <span className="lvl">{['', 'Entry', 'Qualified', 'Senior'][p.career]}</span>
         <span className="cash">{money(p.cash)}</span>
       </div>
@@ -215,7 +279,7 @@ function MeCard({ p, market }) {
           </div>
         ))}
       </div>
-      {next && <p className="goal">Next: {next.name} needs {next.skills} skill points and {next.years} years. You have {totalSkill(p)} and {p.exp}.</p>}
+      {next && <p className="goal">Next: {next.name} needs {next.skills} skill points and {next.years} years. {p.you ? 'You have' : 'Has'} {totalSkill(p)} and {p.exp}.</p>}
     </div>
   )
 }
@@ -262,15 +326,23 @@ export default function App() {
   const [busy, setBusy] = React.useState(false)
   const [skillBuys, setSkillBuys] = React.useState([])
   const [drawer, setDrawer] = React.useState(false)
+  const [humans, setHumans] = React.useState([0])
+  const [turn, setTurn] = React.useState(0)
+  const [handoff, setHandoff] = React.useState(false)
 
   React.useEffect(() => { window.scrollTo(0, 0) }, [view])
 
-  const you = game && game.players[0]
-  const placing = game && !game.over && you.discs > 0 && !report
+  const multi = humans.length > 1
+  const you = game && game.players[humans[Math.min(turn, humans.length - 1)]]
+  const allOut = game && humans.every(h => game.players[h].discs <= 0)
+  const placing = game && !game.over && !report && !handoff && you.discs > 0
 
   function start(id) {
     if (gameId !== 'gethired') { setProfile(id); setView('mini'); return }
-    setGame(newGame(id)); setReport(null); setSkillBuys([]); setView('game')
+    const g = newGame(id)
+    const hs = g.players.filter(p => p.human).map(p => p.id)
+    setGame(g); setHumans(hs); setTurn(0); setHandoff(hs.length > 1)
+    setReport(null); setSkillBuys([]); setView('game')
   }
 
   function choose(zone) {
@@ -280,9 +352,12 @@ export default function App() {
   }
 
   function commit(zoneId, track) {
-    setGame(g => { const n = cloneGame(g); return place(n, 0, zoneId) ? n : g })
-    if (track) setSkillBuys(b => [...b, track])
+    const pid = you.id
+    setGame(g => { const n = cloneGame(g); return place(n, pid, zoneId) ? n : g })
+    if (track) setSkillBuys(b => [...b, { pid, track }])
     setPick(null); setDrawer(false)
+    // last pawn of this person: hand the phone to the next person who still has pawns
+    if (you.discs - 1 <= 0 && turn + 1 < humans.length) { setTurn(turn + 1); setHandoff(true) }
   }
 
   function runRound() {
@@ -290,23 +365,41 @@ export default function App() {
     setTimeout(() => {
       setGame(g => {
         const n = cloneGame(g)
-        const beforeJob = n.players[0].job ? n.players[0].job.title : null
-        const beforeCareer = n.players[0].career
+        const before = Object.fromEntries(humans.map(h => [h, { job: n.players[h].job ? n.players[h].job.title : null, career: n.players[h].career }]))
+        // who went where: people first, then each computer player with its reason
+        const moves = n.players.map(p => ({ pid: p.id, name: p.you ? 'You' : p.name, human: p.human, places: [] }))
+        for (const [zid, ids] of Object.entries(n.placements)) for (const pid of ids) moves[pid].places.push({ zone: ZONES.find(z => z.id === zid).name })
         for (const p of n.players.filter(p => !p.human)) {
-          while (p.discs > 0) { const z = botChoice(n, p); if (!z || !place(n, p.id, z)) { p.discs = 0; break } }
+          while (p.discs > 0) {
+            const z = botChoice(n, p)
+            if (!z || !place(n, p.id, z)) { p.discs = 0; break }
+            moves[p.id].places.push({ zone: ZONES.find(x => x.id === z).name, why: p.lastWhy })
+          }
         }
-        for (const t of skillBuys) {
-          if (n.players[0].cash >= SKILL_COST && n.players[0].skills[t] < 5) { n.players[0].cash -= SKILL_COST; n.players[0].skills[t]++ }
+        for (const b of skillBuys) {
+          const q = n.players[b.pid]
+          if (q.cash >= SKILL_COST && q.skills[b.track] < 5) { q.cash -= SKILL_COST; q.skills[b.track]++ }
         }
         resolve(n)
-        const me = n.players[0]
-        const hired = me.job && me.job.title !== beforeJob ? me.job : null
-        const promoted = me.career > beforeCareer ? me.career : null
-        setReport({ events: n.events || [], card: n.marketCard, impact: n.marketImpact, over: n.over, hired, promoted, me: { ...me, skills: { ...me.skills } } })
+        const results = humans.map(h => {
+          const q = n.players[h]
+          return {
+            pid: h, name: q.you ? 'You' : q.name, you: q.you,
+            hired: q.job && q.job.title !== before[h].job ? q.job : null,
+            promoted: q.career > before[h].career ? q.career : null,
+            snap: { ...q, skills: { ...q.skills } },
+          }
+        })
+        setReport({ events: n.events || [], card: n.marketCard, impact: n.marketImpact, over: n.over, results, moves, payday: n.payday || [], promotions: n.promotions || [] })
         return n
       })
       setSkillBuys([]); setBusy(false)
     }, 500)
+  }
+
+  function closeReport() {
+    setReport(null); setTurn(0)
+    if (humans.length > 1) setHandoff(true)
   }
 
   if (view === 'home') return <Home onPlay={() => setView('hub')} onGame={id => { setGameId(id); setView('pick') }} />
@@ -315,22 +408,23 @@ export default function App() {
     const G = GAMES.find(g => g.id === gameId).comp
     return <G key={gameId + profile} profileId={profile} onHome={() => setView('hub')} />
   }
+  if ((view === 'pick' || !game) && gameId === 'gethired') return <Setup onStart={start} onBack={() => setView('hub')} />
   if (view === 'pick' || !game) return <Pick onStart={start} onBack={() => setView('hub')} gameName={GAMES.find(g => g.id === gameId).name} />
 
   /* -------------------------------------------------------------- the end */
   if (game.over && !report) {
     const table = ranking(game.players)
-    const won = table[0].human
+    const won = table[0].you
     return (
       <div className="end">
         <span className="kicker">Six years later</span>
-        <h1>{won ? 'You won Work Town' : `${table[0].name} won Work Town`}</h1>
+        <h1>{won ? 'You won Work Town' : `${table[0].name.replace(/^The /, 'The ')} won Work Town`}</h1>
         <ol className="podium">
           {table.map((p, i) => (
             <li key={p.id} className={p.human ? 'you' : ''}>
               <span className="place">{i + 1}</span>
               <i className="dot" style={{ background: PLAYER_COLOURS[p.id] }} />
-              <b>{p.human ? 'You' : p.name}</b>
+              <b>{p.you ? 'You' : p.name}</b>
               <span>{['', 'Entry', 'Qualified', 'Senior'][p.career]}</span>
               <span>{p.job ? p.job.title : 'No job'}</span>
               <span>{money(p.cash)}</span>
@@ -358,16 +452,16 @@ export default function App() {
         <button className="back" onClick={() => setView('hub')}>Games</button>
         <div className="year"><span>Year</span><b>{game.round}</b><span>of {ROUNDS}</span></div>
         <div className="workers">
-          {[0, 1, 2].map(i => <i key={i} className={'w' + (i < you.discs ? ' on' : '')} style={{ '--c': PLAYER_COLOURS[0] }} />)}
+          {[0, 1, 2].map(i => <i key={i} className={'w' + (i < you.discs ? ' on' : '')} style={{ '--c': PLAYER_COLOURS[you.id] }} />)}
         </div>
       </header>
 
-      <Board3D game={game} enabled={placing} onPick={choose} />
+      {USE_3D ? <Board3D game={game} enabled={placing} onPick={choose} /> : <Board2D game={game} enabled={placing} onPick={choose} />}
 
       <div className="prompt">
         {placing
-          ? <p>Tap a glowing place to send a worker. <b>{you.discs} left.</b></p>
-          : <p>All three workers are out.</p>}
+          ? <p>{multi ? <><b style={{ color: PLAYER_COLOURS[you.id] }}>{you.name}</b>: tap</> : 'Tap'} a glowing place to send a worker. <b>{you.discs} left.</b></p>
+          : allOut ? <p>Everyone's workers are out. Run the year.</p> : <p>Waiting for the next player.</p>}
       </div>
 
       <aside className="panel">
@@ -383,12 +477,23 @@ export default function App() {
 
       <div className="dock">
         <button className="btn ghost" onClick={() => setDrawer(true)} disabled={!placing}>Places</button>
-        <button className="btn sun grow" disabled={placing || busy || !!report} onClick={runRound}>
+        <button className="btn sun grow" disabled={!allOut || busy || !!report} onClick={runRound}>
           {busy ? 'The year is running...' : 'Run the year'}
         </button>
       </div>
 
       <AnimatePresence>
+        {handoff && !report && !game.over && (
+          <motion.div className="scrim handoff" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
+            <motion.div className="modal" initial={{ scale: 0.9 }} animate={{ scale: 1 }}>
+              <span className="kicker">Year {game.round}</span>
+              <h2>Pass the phone to</h2>
+              <div className="passto"><i className="dot" style={{ background: PLAYER_COLOURS[you.id] }} />{you.name}</div>
+              <p>Everyone else, look away. {you.name}, you have three workers to place.</p>
+              <button className="btn sun big" onClick={() => setHandoff(false)}>I am {you.name}, go</button>
+            </motion.div>
+          </motion.div>
+        )}
         {drawer && (
           <motion.div className="scrim" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={() => setDrawer(false)}>
             <motion.div className="sheet" initial={{ y: 400 }} animate={{ y: 0 }} exit={{ y: 400 }} onClick={e => e.stopPropagation()}>
@@ -429,19 +534,30 @@ export default function App() {
         {report && (
           <motion.div className="scrim" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
             <motion.div className="modal wide" initial={{ y: 30, scale: 0.96 }} animate={{ y: 0, scale: 1 }}>
-              {report.hired && (
-                <div className="celebrate">
-                  <span className="kicker">You got hired</span>
-                  <h2>{report.hired.title}</h2>
-                  <p>{money(report.hired.pay)} a year, plus a year of experience every year you keep it.</p>
-                  <h4>Why you got it</h4>
-                  <WhyChecklist p={report.me} job={report.hired} />
+              <h2>Year {Math.min(game.round - 1, ROUNDS)}: what happened</h2>
+              {report.results.filter(r => r.hired).map(r => (
+                <div key={r.pid} className="celebrate">
+                  <span className="kicker">{r.you ? 'You got hired' : `${r.name} got hired`}</span>
+                  <h2>{r.hired.title}</h2>
+                  <p>{money(r.hired.pay)} a year, plus a year of experience every year {r.you ? 'you keep' : 'they keep'} it.</p>
+                  <h4>Why {r.you ? 'you' : r.name} got it</h4>
+                  <WhyChecklist p={r.snap} job={r.hired} />
                 </div>
-              )}
-              {report.promoted && (
-                <div className="promo">You moved up to <b>{['', 'Entry', 'Qualified', 'Senior'][report.promoted]}</b>. Bigger jobs are open to you now.</div>
-              )}
-              {!report.hired && <h2>Year {Math.min(game.round - 1, ROUNDS)}: what happened</h2>}
+              ))}
+              {report.results.filter(r => r.promoted).map(r => (
+                <div key={'p' + r.pid} className="promo">{r.you ? 'You' : r.name} moved up to <b>{['', 'Entry', 'Qualified', 'Senior'][r.promoted]}</b>. Bigger jobs are open now.</div>
+              ))}
+
+              <div className="moves-all">
+                <span className="kicker">Step 1. Where everyone went, and why</span>
+                {report.moves.map(m => (
+                  <div key={m.pid} className={'mv' + (m.human ? ' human' : '')}>
+                    <b><i className="dot" style={{ background: PLAYER_COLOURS[m.pid] }} /> {m.name}{!m.human && <em> (computer)</em>}</b>
+                    <ul>{m.places.map((pl, j) => <li key={j}><strong>{pl.zone}</strong>{pl.why ? `: ${pl.why.charAt(0).toUpperCase()}${pl.why.slice(1)}.` : ''}</li>)}</ul>
+                  </div>
+                ))}
+              </div>
+              <span className="kicker steplabel">Step 2. The places, in number order</span>
               <ul className="events">
                 {report.events.map((e, i) => (
                   <li key={i}>
@@ -465,9 +581,21 @@ export default function App() {
                   </li>
                 ))}
               </ul>
+              <div className="payday">
+                <span className="kicker">Step 3. Pay day and year end</span>
+                {report.payday.length === 0 && <p className="calm">Nobody had a job this year, so nobody was paid.</p>}
+                {report.payday.length > 0 && (
+                  <table className="mini"><thead><tr><th>Who</th><th>Job</th><th>Salary</th><th>Skill bonus</th><th>Market</th><th>Total</th></tr></thead>
+                    <tbody>{report.payday.map((r, i) => (
+                      <tr key={i}><td>{r.name}</td><td>{r.job}</td><td>{money(r.salary)}</td><td>+{money(r.bonus)}</td>
+                        <td>{r.market >= 0 ? '+' : '-'}{money(Math.abs(r.market))}</td><td><b>{money(r.total)}</b></td></tr>))}</tbody></table>
+                )}
+                <p className="calm">Everyone with a job also gets one more year of experience.{report.promotions.length ? '' : ' Nobody was promoted this year.'}</p>
+                {report.promotions.map((t, i) => <p key={i} className="up-line"><b>Promotion:</b> {t}</p>)}
+              </div>
               {report.card && (
                 <div className="news">
-                  <span className="kicker">Town news</span>
+                  <span className="kicker">Step 4. Town news</span>
                   <b>{report.card.t}.</b> {report.card.d}
                   {report.impact && report.impact.moves.length > 0 && (
                     <div className="moves">{report.impact.moves.map(m => (
@@ -482,7 +610,7 @@ export default function App() {
                   {report.impact && report.impact.moves.length === 0 && report.impact.impacts.length === 0 && <p className="calm">Nobody's job or pay changed this time.</p>}
                 </div>
               )}
-              <button className="btn sun big" onClick={() => setReport(null)}>{report.over ? 'See who won' : 'Next year'}</button>
+              <button className="btn sun big" onClick={closeReport}>{report.over ? 'See who won' : 'Next year'}</button>
             </motion.div>
           </motion.div>
         )}

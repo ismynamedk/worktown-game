@@ -7,6 +7,7 @@ export const EDU = ['School', 'Certificate', 'Diploma', 'Degree']
 export const EDU_COST = [0, 150, 300, 500]
 
 export const SKILL_COST = 100
+export const MENTOR_COST = 250     // one extra year of experience at the Mentor
 export const PROD_PER_POINT = 50
 export const PROD_CAP = 150
 export const MARKET_STEP = 50
@@ -111,7 +112,7 @@ export const ZONES = [
   { id: 'exp',    name: 'Experience Bonus',  cap: 2, art: 'zone-park.png',      d: 'Take one year of experience.' , x: 67, y: 71 },
   { id: 'prod',   name: 'Productivity',      cap: 2, art: 'zone-workshop.png',  d: 'Draw a Productivity card.' , x: 39, y: 82 },
   { id: 'risk',   name: 'Risk Zone',         cap: 1, art: 'zone-corner.png',    d: 'Draw an Oops card, then take 200.' , x: 17, y: 81 },
-  { id: 'career', name: 'Mentor',             cap: 1, art: 'zone-tower.png',     d: 'Pay a mentor 200 for one extra year of experience.' , x: 13, y: 65 },
+  { id: 'career', name: 'Mentor',             cap: 1, art: 'zone-tower.png',     d: 'Pay a mentor 250 for one extra year of experience.' , x: 13, y: 65 },
   { id: 'rest',   name: 'Rest',              cap: 9, art: 'zone-cafe.png',      d: 'Take 100 and do nothing.' , x: 15, y: 40 },
 ]
 
